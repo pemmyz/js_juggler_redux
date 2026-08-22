@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amiga Juggler Redux - Glass Raytrace & Multiverse Stress Test</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <div id="viewport-wrapper">
+    <canvas id="webgl-canvas"></canvas>
+
+    <!-- CRT & Vignette FX -->
+    <div id="crt-overlay" class="crt-overlay"></div>
+    <div class="vignette"></div>
+
+    <!-- Retro HUD -->
+    <header class="retro-ui">
+      <span class="title">AMIGA JUGGLER // MULTIVERSE REDUX</span>
+      <span class="subtext">RAYTRACED GLASS • STRESS TEST • FLYCAM</span>
+      <div class="stats-badge">
+        <span>FPS: <b id="fps-display">60</b></span>
+        <span>JUGGLERS: <b id="juggler-count-display">1</b></span>
+        <span>BALLS: <b id="ball-count-display">3</b></span>
+      </div>
+    </header>
+
+    <!-- Interactive Control Panel -->
+    <div id="control-panel" class="control-panel">
+      <div class="panel-header" id="panel-toggle">
+        <span>⚡ SIMULATION CONTROLS</span>
+        <span class="toggle-icon">[−]</span>
+      </div>
+      <div class="panel-body">
+        <div class="control-section">
+          <label>PRESETS</label>
+          <div class="btn-group">
+            <button onclick="applyPreset(1, 1)">1 (Solo)</button>
+            <button onclick="applyPreset(20, 1)">20 (Row)</button>
+            <button onclick="applyPreset(10, 10)">100 (10x10)</button>
+            <button onclick="applyPreset(20, 20)">400 (Stress)</button>
+          </div>
+        </div>
+
+        <div class="control-section">
+          <div class="slider-row">
+            <label for="slider-cols">Columns (X): <span id="val-cols">1</span></label>
+            <input type="range" id="slider-cols" min="1" max="25" value="1" />
+          </div>
+          <div class="slider-row">
+            <label for="slider-rows">Rows (Z): <span id="val-rows">1</span></label>
+            <input type="range" id="slider-rows" min="1" max="25" value="1" />
+          </div>
+          <div class="slider-row">
+            <label for="slider-spacing">Spacing: <span id="val-spacing">3.2</span>m</label>
+            <input type="range" id="slider-spacing" min="2.0" max="6.0" step="0.1" value="3.2" />
+          </div>
+          <div class="slider-row">
+            <label for="slider-wave">Wave Offset: <span id="val-wave">0.15</span>s</label>
+            <input type="range" id="slider-wave" min="0.0" max="0.5" step="0.01" value="0.15" />
+          </div>
+        </div>
+
+        <div class="control-section">
+          <label>GLASS & OPTICS</label>
+          <div class="slider-row">
+            <label for="slider-opacity">Glass Opacity: <span id="val-opacity">0.65</span></label>
+            <input type="range" id="slider-opacity" min="0.1" max="1.0" step="0.05" value="0.65" />
+          </div>
+          <div class="slider-row">
+            <label for="slider-refract">Refraction: <span id="val-refract">0.85</span></label>
+            <input type="range" id="slider-refract" min="0.0" max="1.0" step="0.05" value="0.85" />
+          </div>
+          <div class="slider-row">
+            <label for="slider-chroma">Inner Glow: <span id="val-chroma">1.2</span></label>
+            <input type="range" id="slider-chroma" min="0.0" max="3.0" step="0.1" value="1.2" />
+          </div>
+        </div>
+
+        <div class="control-section">
+          <label>CAMERA & DISPLAY</label>
+          <div class="checkbox-row">
+            <label><input type="checkbox" id="chk-flycam" checked /> Flying 3D Camera</label>
+            <label><input type="checkbox" id="chk-crt" checked /> CRT Scanlines</label>
+            <label><input type="checkbox" id="chk-retro-res" checked /> 320x240 Pixelate</label>
+          </div>
+          <div class="slider-row">
+            <label for="slider-flyspeed">Flight Speed: <span id="val-flyspeed">1.0</span>x</label>
+            <input type="range" id="slider-flyspeed" min="0.2" max="3.0" step="0.1" value="1.0" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hotkey shortcuts footer -->
+    <footer class="retro-controls-hint">
+      <span>[L-DRAG] Orbit</span>
+      <span>[WHEEL] Zoom</span>
+      <span>[SPACE] Pause</span>
+      <span>[C] Toggle FlyCam</span>
+      <span>[R] Reset Cam</span>
+      <span>[F] Fullscreen</span>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

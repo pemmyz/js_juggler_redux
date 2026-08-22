@@ -1,0 +1,244 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #07050d;
+  font-family: "Courier New", Courier, monospace;
+}
+
+#viewport-wrapper {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #000;
+}
+
+#webgl-canvas {
+  width: 100%;
+  height: 100%;
+  max-width: 100vw;
+  max-height: 100vh;
+  object-fit: contain;
+  display: block;
+}
+
+.pixelated {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* CRT scanlines effect */
+.crt-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(
+    rgba(18, 16, 24, 0) 50%, 
+    rgba(0, 0, 0, 0.4) 50%
+  );
+  background-size: 100% 4px;
+  z-index: 10;
+}
+
+.vignette {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.85);
+  z-index: 11;
+}
+
+/* Top-left HUD */
+.retro-ui {
+  position: absolute;
+  top: 14px;
+  left: 18px;
+  color: #eedeff;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 0 #000, 0 0 8px rgba(180, 140, 255, 0.6);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.retro-ui .title {
+  font-weight: 900;
+  font-size: 14px;
+  color: #ffde59;
+}
+
+.retro-ui .subtext {
+  font-size: 10px;
+  color: #b7a4db;
+}
+
+.stats-badge {
+  margin-top: 6px;
+  display: flex;
+  gap: 12px;
+  background: rgba(14, 10, 26, 0.75);
+  border: 1px solid #7957b8;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.stats-badge b {
+  color: #55ff99;
+}
+
+/* Control Panel */
+.control-panel {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  width: 290px;
+  max-height: calc(100vh - 50px);
+  background: rgba(16, 11, 30, 0.88);
+  border: 1.5px solid #8e68df;
+  border-radius: 6px;
+  color: #d8caf0;
+  z-index: 30;
+  font-size: 11px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: 8px 12px;
+  background: #251648;
+  border-bottom: 1px solid #8e68df;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+  color: #ffea79;
+}
+
+.panel-body {
+  padding: 10px 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.control-panel.collapsed .panel-body {
+  display: none;
+}
+
+.control-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-bottom: 1px solid rgba(142, 104, 223, 0.25);
+  padding-bottom: 8px;
+}
+
+.control-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.control-section > label {
+  font-weight: bold;
+  color: #a4e5ff;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.btn-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+button {
+  background: #39226e;
+  color: #fff;
+  border: 1px solid #9974eb;
+  padding: 5px 6px;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: bold;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+button:hover {
+  background: #5b37b0;
+}
+
+.slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.slider-row label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+}
+
+input[type="range"] {
+  accent-color: #f7ce3e;
+  height: 4px;
+  cursor: pointer;
+}
+
+.checkbox-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+}
+
+.checkbox-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.retro-controls-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 14px;
+  font-size: 10px;
+  font-weight: bold;
+  color: #cabde2;
+  text-shadow: 1px 1px 0 #000;
+  z-index: 20;
+  opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+  .retro-controls-hint { display: none; }
+  .control-panel { width: 230px; }
+}
