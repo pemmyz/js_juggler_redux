@@ -1,5 +1,5 @@
 /**
- * AMIGA JUGGLER REDUX - MULTIVERSE & GLASS RAYTRACE RECREATION
+ * AMIGA JUGGLER REDUX - SOLID GLASS ORBS & REAL-TIME CUBEMAP RAYTRACE REFLECTIONS
  */
 
 // ==========================================
@@ -15,18 +15,18 @@ const LIMB_COLOR  = 0xBAC1CE;
 const JOINT_COLOR = 0x8892A2;
 
 const BALL_HUES = [
-  { color: 0x00FF44, glow: 0x00E030 }, // Emerald Glass
-  { color: 0xFFDD00, glow: 0xF0B800 }, // Topaz Glass
-  { color: 0x00B0FF, glow: 0x0088FF }  // Sapphire Glass
+  { color: 0x00FF44, glow: 0x00A020 }, // Solid Emerald Glass
+  { color: 0xFFD700, glow: 0xC08800 }, // Solid Topaz Glass
+  { color: 0x00B0FF, glow: 0x0066CC }  // Solid Sapphire Glass
 ];
 
 const JUGGLE_PERIOD = 2.4;
 
 // ==========================================
-// STATE
+// STATE & CONFIG
 // ==========================================
 let scene, camera, renderer, clock;
-let envCubeMap;
+let cubeCamera, dynamicCubeRenderTarget;
 let isPaused = false;
 
 // Dynamic simulation parameters
@@ -35,9 +35,11 @@ const config = {
   rows: 1,
   spacing: 3.2,
   waveDelay: 0.15,
-  glassOpacity: 0.65,
-  refraction: 0.85,
-  innerGlow: 1.2,
+  glassOpacity: 0.85,
+  transmission: 0.75,
+  ior: 1.52,                 // Glass index of refraction
+  reflectionIntensity: 2.8,  // Real-time world reflection gain
+  roughness: 0.0,            // Mirror-smooth polished glass
   flyCam: true,
   flySpeed: 1.0,
   pixelated: true
@@ -90,9 +92,15 @@ function init() {
 
   clock = new THREE.Clock();
 
-  // 4. Procedural Environment Map
-  envCubeMap = createProceduralEnvCube();
-  scene.environment = envCubeMap;
+  // 4. Dynamic Real-Time CubeCamera & Render Target
+  // Renders 6 faces of the 3D world in real-time onto the glass balls
+  dynamicCubeRenderTarget = new THREE.WebGLCubeRenderTarget(256, {
+    generateMipmaps: true,
+    minFilter: THREE.LinearMipmapLinearFilter,
+    magFilter: THREE.LinearFilter
+  });
+  cubeCamera = new THREE.CubeCamera(0.05, 500, dynamicCubeRenderTarget);
+  scene.add(cubeCamera);
 
   // 5. Lighting, Floor, Materials
   setupLighting();
@@ -112,57 +120,13 @@ function init() {
 }
 
 // ==========================================
-// RAYTRACE ENVIRONMENT CUBE MAP GENERATOR
-// ==========================================
-function createProceduralEnvCube() {
-  const cubeCanvas = document.createElement('canvas');
-  cubeCanvas.width = 128;
-  cubeCanvas.height = 128;
-  const ctx = cubeCanvas.getContext('2d');
-
-  function getFace(type) {
-    ctx.fillStyle = '#9885C2';
-    ctx.fillRect(0, 0, 128, 128);
-
-    if (type === 'bottom') {
-      for (let x = 0; x < 4; x++) {
-        for (let y = 0; y < 4; y++) {
-          ctx.fillStyle = (x + y) % 2 === 0 ? CHECKER_GREEN : CHECKER_GOLD;
-          ctx.fillRect(x * 32, y * 32, 32, 32);
-        }
-      }
-    } else if (type === 'side') {
-      const grad = ctx.createLinearGradient(0, 0, 0, 128);
-      grad.addColorStop(0, '#7560a8');
-      grad.addColorStop(0.65, '#9885C2');
-      grad.addColorStop(0.66, '#187A24');
-      grad.addColorStop(1, '#0e4815');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, 128, 128);
-    }
-    const img = new Image();
-    img.src = cubeCanvas.toDataURL();
-    return img;
-  }
-
-  const cubeTex = new THREE.CubeTexture([
-    getFace('side'), getFace('side'),
-    getFace('top'),  getFace('bottom'),
-    getFace('side'), getFace('side')
-  ]);
-  cubeTex.needsUpdate = true;
-  cubeTex.mapping = THREE.CubeRefractionMapping;
-  return cubeTex;
-}
-
-// ==========================================
 // LIGHTING
 // ==========================================
 function setupLighting() {
-  const ambient = new THREE.AmbientLight(0x726490, 0.9);
+  const ambient = new THREE.AmbientLight(0x726490, 0.95);
   scene.add(ambient);
 
-  const sun = new THREE.DirectionalLight(0xffffff, 1.35);
+  const sun = new THREE.DirectionalLight(0xffffff, 1.4);
   sun.position.set(25, 45, 30);
   sun.castShadow = true;
   sun.shadow.mapSize.width = 1024;
@@ -177,7 +141,7 @@ function setupLighting() {
   sun.shadow.bias = -0.0008;
   scene.add(sun);
 
-  const skyFill = new THREE.DirectionalLight(0xa5c2ff, 0.45);
+  const skyFill = new THREE.DirectionalLight(0xa5c2ff, 0.5);
   skyFill.position.set(-20, 20, -20);
   scene.add(skyFill);
 }
@@ -219,85 +183,82 @@ function createCheckerFloor() {
 }
 
 // ==========================================
-// SHARED GEOMETRIES & GLASS MATERIALS
+// SHARED GEOMETRIES & SOLID GLASS MATERIALS
 // ==========================================
 function initSharedResources() {
-  sharedGeos.head = new THREE.SphereGeometry(0.55, 18, 14);
-  sharedGeos.torsoBody = new THREE.CylinderGeometry(0.55, 0.48, 1.25, 16, 1);
-  sharedGeos.torsoCapTop = new THREE.SphereGeometry(0.55, 16, 10);
-  sharedGeos.torsoCapBottom = new THREE.SphereGeometry(0.48, 16, 10);
+  sharedGeos.head = new THREE.SphereGeometry(0.55, 20, 16);
+  sharedGeos.torsoBody = new THREE.CylinderGeometry(0.55, 0.48, 1.25, 20, 1);
+  sharedGeos.torsoCapTop = new THREE.SphereGeometry(0.55, 18, 12);
+  sharedGeos.torsoCapBottom = new THREE.SphereGeometry(0.48, 18, 12);
 
-  sharedGeos.jointShoulder = new THREE.SphereGeometry(0.14, 10, 8);
-  sharedGeos.jointElbow = new THREE.SphereGeometry(0.11, 10, 8);
-  sharedGeos.jointHand = new THREE.SphereGeometry(0.12, 10, 8);
+  sharedGeos.jointShoulder = new THREE.SphereGeometry(0.14, 12, 10);
+  sharedGeos.jointElbow = new THREE.SphereGeometry(0.11, 12, 10);
+  sharedGeos.jointHand = new THREE.SphereGeometry(0.12, 12, 10);
 
-  sharedGeos.jointHip = new THREE.SphereGeometry(0.13, 10, 8);
-  sharedGeos.jointKnee = new THREE.SphereGeometry(0.11, 10, 8);
-  sharedGeos.jointFoot = new THREE.SphereGeometry(0.12, 10, 8);
+  sharedGeos.jointHip = new THREE.SphereGeometry(0.13, 12, 10);
+  sharedGeos.jointKnee = new THREE.SphereGeometry(0.11, 12, 10);
+  sharedGeos.jointFoot = new THREE.SphereGeometry(0.12, 12, 10);
 
-  sharedGeos.armBone = new THREE.CylinderGeometry(0.065, 0.065, 1, 10);
-  sharedGeos.legBone = new THREE.CylinderGeometry(0.062, 0.062, 1, 10);
-  sharedGeos.ball = new THREE.SphereGeometry(0.35, 20, 16);
-  sharedGeos.innerBall = new THREE.SphereGeometry(0.24, 16, 12);
+  sharedGeos.armBone = new THREE.CylinderGeometry(0.065, 0.065, 1, 12);
+  sharedGeos.legBone = new THREE.CylinderGeometry(0.062, 0.062, 1, 12);
+  
+  // High-fidelity sphere for smooth curved glass reflections
+  sharedGeos.ball = new THREE.SphereGeometry(0.35, 32, 24);
 
   sharedMats.torso = new THREE.MeshPhongMaterial({
     color: TORSO_COLOR,
     specular: 0xffaaaa,
-    shininess: 45
+    shininess: 50
   });
 
   sharedMats.head = new THREE.MeshPhongMaterial({
     color: HEAD_COLOR,
     specular: 0xffffff,
-    shininess: 100
+    shininess: 110
   });
 
   sharedMats.limb = new THREE.MeshPhongMaterial({
     color: LIMB_COLOR,
     specular: 0xffffff,
-    shininess: 65
+    shininess: 75
   });
 
   sharedMats.joint = new THREE.MeshPhongMaterial({
     color: JOINT_COLOR,
     specular: 0xffffff,
-    shininess: 50
+    shininess: 60
   });
 
+  // Solid glass physical materials reflecting the dynamic cubemap
   glassBallMats = BALL_HUES.map(item => {
-    return {
-      outer: new THREE.MeshPhysicalMaterial({
-        color: item.color,
-        emissive: item.glow,
-        emissiveIntensity: 0.25,
-        metalness: 0.1,
-        roughness: 0.05,
-        transmission: 0.85,
-        ior: 1.52,
-        reflectivity: 0.9,
-        transparent: true,
-        opacity: config.glassOpacity,
-        envMap: envCubeMap,
-        envMapIntensity: 1.5,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.1
-      }),
-      innerCore: new THREE.MeshBasicMaterial({
-        color: item.color,
-        transparent: true,
-        opacity: 0.45,
-        blending: THREE.AdditiveBlending
-      })
-    };
+    return new THREE.MeshPhysicalMaterial({
+      color: item.color,
+      emissive: item.glow,
+      emissiveIntensity: 0.1,
+      metalness: 0.05,
+      roughness: config.roughness,
+      transmission: config.transmission,
+      ior: config.ior,
+      reflectivity: 1.0,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.0,
+      transparent: true,
+      opacity: config.glassOpacity,
+      envMap: dynamicCubeRenderTarget.texture,
+      envMapIntensity: config.reflectionIntensity,
+      depthWrite: true
+    });
   });
 }
 
 function updateGlassMaterials() {
-  glassBallMats.forEach(matGroup => {
-    matGroup.outer.opacity = config.glassOpacity;
-    matGroup.outer.transmission = config.refraction;
-    matGroup.outer.emissiveIntensity = config.innerGlow * 0.3;
-    matGroup.innerCore.opacity = config.innerGlow * 0.35;
+  glassBallMats.forEach(mat => {
+    mat.opacity = config.glassOpacity;
+    mat.transmission = config.transmission;
+    mat.ior = config.ior;
+    mat.roughness = config.roughness;
+    mat.envMapIntensity = config.reflectionIntensity;
+    mat.needsUpdate = true;
   });
 }
 
@@ -342,18 +303,13 @@ function createJugglerEntity(posX, posZ, indexOffset) {
   const leftArm = buildArm(root, -0.75, 2.55);
   const rightArm = buildArm(root, 0.75, 2.55);
 
-  // 5. Glass Translucent Balls
+  // 5. Solid Glass Reflective Balls
   const ballMeshes = [];
   for (let i = 0; i < 3; i++) {
-    const ballGroup = new THREE.Group();
-    const outerMesh = new THREE.Mesh(sharedGeos.ball, glassBallMats[i].outer);
-    outerMesh.castShadow = true;
-
-    const innerMesh = new THREE.Mesh(sharedGeos.innerBall, glassBallMats[i].innerCore);
-    ballGroup.add(outerMesh, innerMesh);
-
-    scene.add(ballGroup);
-    ballMeshes.push(ballGroup);
+    const ballMesh = new THREE.Mesh(sharedGeos.ball, glassBallMats[i]);
+    ballMesh.castShadow = true;
+    scene.add(ballMesh);
+    ballMeshes.push(ballMesh);
   }
 
   scene.add(root);
@@ -491,7 +447,6 @@ function rebuildJugglerGrid() {
   document.getElementById('juggler-count-display').innerText = total;
   document.getElementById('ball-count-display').innerText = total * 3;
 
-  // Keep camera distance identical to Solo
   camTarget.set(0, 1.85, 0);
   if (!config.flyCam) {
     camRadius = 8.5;
@@ -572,21 +527,49 @@ function updateJugglers(time) {
 }
 
 // ==========================================
-// FLYING CAMERA SYSTEM (Solo Distance & Moves)
+// DYNAMIC CUBEMAP REFLECTION PIPELINE
+// ==========================================
+function updateCubeMapReflection() {
+  if (!cubeCamera || !dynamicCubeRenderTarget) return;
+
+  // Track the primary ball position to sample the surrounding reflection
+  if (jugglerInstances.length > 0 && jugglerInstances[0].balls.length > 0) {
+    cubeCamera.position.copy(jugglerInstances[0].balls[0].position);
+  } else {
+    cubeCamera.position.set(0, 2.8, 0.5);
+  }
+
+  // Temporarily hide all balls to prevent self-occlusion during cubemap rendering
+  for (let j = 0; j < jugglerInstances.length; j++) {
+    for (let b = 0; b < jugglerInstances[j].balls.length; b++) {
+      jugglerInstances[j].balls[b].visible = false;
+    }
+  }
+
+  // Render the real-time 6 faces of the game world into the cubemap texture
+  cubeCamera.update(renderer, scene);
+
+  // Restore ball visibility for primary viewpoint
+  for (let j = 0; j < jugglerInstances.length; j++) {
+    for (let b = 0; b < jugglerInstances[j].balls.length; b++) {
+      jugglerInstances[j].balls[b].visible = true;
+    }
+  }
+}
+
+// ==========================================
+// FLYING CAMERA SYSTEM
 // ==========================================
 function updateFlyingCamera(delta) {
   flyTime += delta * config.flySpeed * 0.35;
 
-  // Fixed Solo orbit distance & flight curve
   const orbitR = 7.0;
-
   const camX = Math.sin(flyTime) * (orbitR + 2.5);
   const camZ = Math.cos(flyTime * 0.8) * (orbitR + 3.0);
   const camY = 2.8 + Math.sin(flyTime * 1.6) * 2.2 + Math.cos(flyTime * 0.5) * 1.5;
 
   camera.position.set(camX, Math.max(0.6, camY), camZ);
 
-  // Fixed Solo look tracking
   const lookX = Math.sin(flyTime * 0.5) * 0.48;
   const lookZ = Math.cos(flyTime * 0.5) * 0.48;
   camTarget.set(lookX, 1.8, lookZ);
@@ -619,10 +602,12 @@ function setupUI() {
   bindSlider('slider-spacing', 'val-spacing', v => { config.spacing = parseFloat(v); rebuildJugglerGrid(); });
   bindSlider('slider-wave', 'val-wave', v => { config.waveDelay = parseFloat(v); rebuildJugglerGrid(); });
 
-  // Glass Sliders
+  // Glass & Cubemap Sliders
+  bindSlider('slider-reflect', 'val-reflect', v => { config.reflectionIntensity = parseFloat(v); updateGlassMaterials(); });
+  bindSlider('slider-transmission', 'val-transmission', v => { config.transmission = parseFloat(v); updateGlassMaterials(); });
+  bindSlider('slider-ior', 'val-ior', v => { config.ior = parseFloat(v); updateGlassMaterials(); });
+  bindSlider('slider-roughness', 'val-roughness', v => { config.roughness = parseFloat(v); updateGlassMaterials(); });
   bindSlider('slider-opacity', 'val-opacity', v => { config.glassOpacity = parseFloat(v); updateGlassMaterials(); });
-  bindSlider('slider-refract', 'val-refract', v => { config.refraction = parseFloat(v); updateGlassMaterials(); });
-  bindSlider('slider-chroma', 'val-chroma', v => { config.innerGlow = parseFloat(v); updateGlassMaterials(); });
 
   // Cam Speed
   bindSlider('slider-flyspeed', 'val-flyspeed', v => { config.flySpeed = parseFloat(v); });
@@ -738,7 +723,7 @@ function setupUserControls(canvas) {
 }
 
 // ==========================================
-// MAIN LOOP & BENCHMARK
+// MAIN LOOP
 // ==========================================
 let elapsedTime = 0;
 
@@ -765,6 +750,10 @@ function animate() {
     }
   }
 
+  // 1. Update dynamic cubemap reflection from the ball vantage point
+  updateCubeMapReflection();
+
+  // 2. Render final scene with reflective solid glass balls
   renderer.render(scene, camera);
 }
 

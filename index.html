@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Amiga Juggler Redux - Glass Raytrace & Multiverse Stress Test</title>
+  <title>Amiga Juggler Redux - Solid Glass & Dynamic Cubemap Reflections</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
@@ -17,12 +17,13 @@
 
     <!-- Retro HUD -->
     <header class="retro-ui">
-      <span class="title">AMIGA JUGGLER // MULTIVERSE REDUX</span>
-      <span class="subtext">RAYTRACED GLASS • STRESS TEST • FLYCAM</span>
+      <span class="title">AMIGA JUGGLER // SOLID GLASS REFLECTIONS</span>
+      <span class="subtext">REAL-TIME CUBEMAP • PHYSICAL TRANSMISSION • 60 FPS</span>
       <div class="stats-badge">
         <span>FPS: <b id="fps-display">60</b></span>
         <span>JUGGLERS: <b id="juggler-count-display">1</b></span>
         <span>BALLS: <b id="ball-count-display">3</b></span>
+        <span>CUBEMAP: <b id="cubemap-status">ACTIVE [256²x6]</b></span>
       </div>
     </header>
 
@@ -34,7 +35,7 @@
       </div>
       <div class="panel-body">
         <div class="control-section">
-          <label>PRESETS</label>
+          <label>MULTIVERSE PRESETS</label>
           <div class="btn-group">
             <button onclick="applyPreset(1, 1)">1 (Solo)</button>
             <button onclick="applyPreset(5, 5)">25 (5x5)</button>
@@ -45,6 +46,7 @@
         </div>
 
         <div class="control-section">
+          <label>GRID CONFIGURATION</label>
           <div class="slider-row">
             <label for="slider-cols">Columns (X): <span id="val-cols">1</span></label>
             <input type="range" id="slider-cols" min="1" max="25" value="1" />
@@ -58,24 +60,32 @@
             <input type="range" id="slider-spacing" min="2.0" max="6.0" step="0.1" value="3.2" />
           </div>
           <div class="slider-row">
-            <label for="slider-wave">Wave Offset: <span id="val-wave">0.15</span>s</label>
+            <label for="slider-wave">Wave Delay: <span id="val-wave">0.15</span>s</label>
             <input type="range" id="slider-wave" min="0.0" max="0.5" step="0.01" value="0.15" />
           </div>
         </div>
 
         <div class="control-section">
-          <label>GLASS & OPTICS</label>
+          <label>SOLID GLASS OPTICS & CUBEMAP</label>
           <div class="slider-row">
-            <label for="slider-opacity">Glass Opacity: <span id="val-opacity">0.65</span></label>
-            <input type="range" id="slider-opacity" min="0.1" max="1.0" step="0.05" value="0.65" />
+            <label for="slider-reflect">Reflection Power: <span id="val-reflect">2.8</span>x</label>
+            <input type="range" id="slider-reflect" min="0.5" max="5.0" step="0.1" value="2.8" />
           </div>
           <div class="slider-row">
-            <label for="slider-refract">Refraction: <span id="val-refract">0.85</span></label>
-            <input type="range" id="slider-refract" min="0.0" max="1.0" step="0.05" value="0.85" />
+            <label for="slider-transmission">Glass Transmission: <span id="val-transmission">0.75</span></label>
+            <input type="range" id="slider-transmission" min="0.0" max="1.0" step="0.05" value="0.75" />
           </div>
           <div class="slider-row">
-            <label for="slider-chroma">Inner Glow: <span id="val-chroma">1.2</span></label>
-            <input type="range" id="slider-chroma" min="0.0" max="3.0" step="0.1" value="1.2" />
+            <label for="slider-ior">Refraction Index (IOR): <span id="val-ior">1.52</span></label>
+            <input type="range" id="slider-ior" min="1.0" max="2.4" step="0.02" value="1.52" />
+          </div>
+          <div class="slider-row">
+            <label for="slider-roughness">Surface Roughness: <span id="val-roughness">0.00</span></label>
+            <input type="range" id="slider-roughness" min="0.0" max="0.5" step="0.01" value="0.0" />
+          </div>
+          <div class="slider-row">
+            <label for="slider-opacity">Base Opacity: <span id="val-opacity">0.85</span></label>
+            <input type="range" id="slider-opacity" min="0.2" max="1.0" step="0.05" value="0.85" />
           </div>
         </div>
 

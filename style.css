@@ -94,7 +94,7 @@ body, html {
   margin-top: 6px;
   display: flex;
   gap: 12px;
-  background: rgba(14, 10, 26, 0.75);
+  background: rgba(14, 10, 26, 0.82);
   border: 1px solid #7957b8;
   padding: 4px 8px;
   border-radius: 4px;
@@ -110,9 +110,9 @@ body, html {
   position: absolute;
   top: 14px;
   right: 18px;
-  width: 290px;
+  width: 300px;
   max-height: calc(100vh - 50px);
-  background: rgba(16, 11, 30, 0.88);
+  background: rgba(16, 11, 30, 0.9);
   border: 1.5px solid #8e68df;
   border-radius: 6px;
   color: #d8caf0;
@@ -240,5 +240,5 @@ input[type="range"] {
 
 @media (max-width: 768px) {
   .retro-controls-hint { display: none; }
-  .control-panel { width: 230px; }
+  .control-panel { width: 240px; }
 }
