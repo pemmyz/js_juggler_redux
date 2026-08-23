@@ -1,11 +1,5 @@
 /**
  * AMIGA JUGGLER REDUX - MULTIVERSE & GLASS RAYTRACE RECREATION
- * Features:
- * - Dynamic Procedural Refraction/Reflection Environment Map
- * - Translucent internal-lit Raytraced Glass Juggling Balls
- * - Multiverse Formation Grid (NxM) up to 400+ Jugglers (1200+ Spheres)
- * - Rollercoaster Skimming Flying Camera
- * - Real-time FPS & Stress Test Benchmark
  */
 
 // ==========================================
@@ -52,12 +46,12 @@ const config = {
 // Character instances list
 let jugglerInstances = [];
 
-// Shared Geometries & Materials (High-performance instanced sharing)
+// Shared Geometries & Materials
 let sharedGeos = {};
 let sharedMats = {};
 let glassBallMats = [];
 
-// Camera State
+// Camera State (Solo default distance)
 let camRadius = 8.5;
 let camTheta = 0.0;
 let camPhi = 0.25;
@@ -91,12 +85,12 @@ function init() {
     powerPreference: 'high-performance'
   });
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.BasicShadowMap; // Crisp 1980s raytrace shadows
+  renderer.shadowMap.type = THREE.BasicShadowMap;
   applyResolution();
 
   clock = new THREE.Clock();
 
-  // 4. Procedural Environment Map for Glass Refraction
+  // 4. Procedural Environment Map
   envCubeMap = createProceduralEnvCube();
   scene.environment = envCubeMap;
 
@@ -119,7 +113,6 @@ function init() {
 
 // ==========================================
 // RAYTRACE ENVIRONMENT CUBE MAP GENERATOR
-// Creates reflection of sky, horizon, & checkerboard
 // ==========================================
 function createProceduralEnvCube() {
   const cubeCanvas = document.createElement('canvas');
@@ -127,13 +120,11 @@ function createProceduralEnvCube() {
   cubeCanvas.height = 128;
   const ctx = cubeCanvas.getContext('2d');
 
-  // Helper to make textured canvas face
   function getFace(type) {
     ctx.fillStyle = '#9885C2';
     ctx.fillRect(0, 0, 128, 128);
 
     if (type === 'bottom') {
-      // Ground checker
       for (let x = 0; x < 4; x++) {
         for (let y = 0; y < 4; y++) {
           ctx.fillStyle = (x + y) % 2 === 0 ? CHECKER_GREEN : CHECKER_GOLD;
@@ -141,7 +132,6 @@ function createProceduralEnvCube() {
         }
       }
     } else if (type === 'side') {
-      // Horizon gradient
       const grad = ctx.createLinearGradient(0, 0, 0, 128);
       grad.addColorStop(0, '#7560a8');
       grad.addColorStop(0.65, '#9885C2');
@@ -232,7 +222,6 @@ function createCheckerFloor() {
 // SHARED GEOMETRIES & GLASS MATERIALS
 // ==========================================
 function initSharedResources() {
-  // Shared Geometries to keep 100+ jugglers ultra fast
   sharedGeos.head = new THREE.SphereGeometry(0.55, 18, 14);
   sharedGeos.torsoBody = new THREE.CylinderGeometry(0.55, 0.48, 1.25, 16, 1);
   sharedGeos.torsoCapTop = new THREE.SphereGeometry(0.55, 16, 10);
@@ -251,7 +240,6 @@ function initSharedResources() {
   sharedGeos.ball = new THREE.SphereGeometry(0.35, 20, 16);
   sharedGeos.innerBall = new THREE.SphereGeometry(0.24, 16, 12);
 
-  // Materials
   sharedMats.torso = new THREE.MeshPhongMaterial({
     color: TORSO_COLOR,
     specular: 0xffaaaa,
@@ -276,7 +264,6 @@ function initSharedResources() {
     shininess: 50
   });
 
-  // RAYTRACED GLASS MATERIALS (Translucent & Refractive)
   glassBallMats = BALL_HUES.map(item => {
     return {
       outer: new THREE.MeshPhysicalMaterial({
@@ -285,8 +272,8 @@ function initSharedResources() {
         emissiveIntensity: 0.25,
         metalness: 0.1,
         roughness: 0.05,
-        transmission: 0.85,     // Glass light transmission
-        ior: 1.52,               // Glass index of refraction
+        transmission: 0.85,
+        ior: 1.52,
         reflectivity: 0.9,
         transparent: true,
         opacity: config.glassOpacity,
@@ -359,12 +346,9 @@ function createJugglerEntity(posX, posZ, indexOffset) {
   const ballMeshes = [];
   for (let i = 0; i < 3; i++) {
     const ballGroup = new THREE.Group();
-
-    // Outer refractive glass shell
     const outerMesh = new THREE.Mesh(sharedGeos.ball, glassBallMats[i].outer);
     outerMesh.castShadow = true;
 
-    // Glowing internal core
     const innerMesh = new THREE.Mesh(sharedGeos.innerBall, glassBallMats[i].innerCore);
     ballGroup.add(outerMesh, innerMesh);
 
@@ -394,12 +378,10 @@ function buildLeg(parent, x) {
   hip.position.copy(pA);
 
   const thigh = createCylinderBone(pA, pB, sharedGeos.legBone, sharedMats.limb);
-
   const knee = new THREE.Mesh(sharedGeos.jointKnee, sharedMats.joint);
   knee.position.copy(pB);
 
   const calf = createCylinderBone(pB, pC, sharedGeos.legBone, sharedMats.limb);
-
   const foot = new THREE.Mesh(sharedGeos.jointFoot, sharedMats.joint);
   foot.position.copy(pC);
   foot.scale.set(1, 0.6, 1.6);
@@ -480,7 +462,6 @@ function orientBone(boneMesh, from, to) {
 // GRID BUILDER & MULTIVERSE MANAGEMENT
 // ==========================================
 function rebuildJugglerGrid() {
-  // Clean old jugglers & balls
   jugglerInstances.forEach(j => {
     scene.remove(j.root);
     j.balls.forEach(b => scene.remove(b));
@@ -499,7 +480,6 @@ function rebuildJugglerGrid() {
     for (let c = 0; c < cols; c++) {
       const px = offsetX + c * spacing;
       const pz = offsetZ + r * spacing;
-      // Staggered wave timing
       const delay = (c + r) * config.waveDelay;
       const juggler = createJugglerEntity(px, pz, delay);
       jugglerInstances.push(juggler);
@@ -511,10 +491,10 @@ function rebuildJugglerGrid() {
   document.getElementById('juggler-count-display').innerText = total;
   document.getElementById('ball-count-display').innerText = total * 3;
 
-  // Auto-center camera look target
+  // Keep camera distance identical to Solo
   camTarget.set(0, 1.85, 0);
   if (!config.flyCam) {
-    camRadius = Math.max(7.5, Math.max(cols, rows) * spacing * 0.9);
+    camRadius = 8.5;
     updateCameraOrbit();
   }
 }
@@ -564,7 +544,6 @@ function updateJugglers(time) {
         rootPos.y + localBall.y,
         rootPos.z + localBall.z
       );
-      // Subtle spin for reflections
       item.balls[b].rotation.y = t * 2 + b;
       item.balls[b].rotation.x = t * 1.5;
     }
@@ -593,26 +572,23 @@ function updateJugglers(time) {
 }
 
 // ==========================================
-// FLYING CAMERA / ROLLERCOASTER SYSTEM
+// FLYING CAMERA SYSTEM (Solo Distance & Moves)
 // ==========================================
 function updateFlyingCamera(delta) {
   flyTime += delta * config.flySpeed * 0.35;
 
-  const maxSpan = Math.max(config.cols, config.rows) * config.spacing;
-  const orbitR = Math.max(7.0, maxSpan * 0.75);
+  // Fixed Solo orbit distance & flight curve
+  const orbitR = 7.0;
 
-  // Dynamic sweeping altitude & angle
   const camX = Math.sin(flyTime) * (orbitR + 2.5);
   const camZ = Math.cos(flyTime * 0.8) * (orbitR + 3.0);
-  
-  // Rollercoaster altitude: dives low near the floor (0.6m) and climbs high (7m)
   const camY = 2.8 + Math.sin(flyTime * 1.6) * 2.2 + Math.cos(flyTime * 0.5) * 1.5;
 
   camera.position.set(camX, Math.max(0.6, camY), camZ);
 
-  // Dynamic target tracking with smooth lead
-  const lookX = Math.sin(flyTime * 0.5) * (maxSpan * 0.15);
-  const lookZ = Math.cos(flyTime * 0.5) * (maxSpan * 0.15);
+  // Fixed Solo look tracking
+  const lookX = Math.sin(flyTime * 0.5) * 0.48;
+  const lookZ = Math.cos(flyTime * 0.5) * 0.48;
   camTarget.set(lookX, 1.8, lookZ);
 
   camera.lookAt(camTarget);
@@ -631,7 +607,6 @@ function updateCameraOrbit() {
 // UI & CONTROLS BINDING
 // ==========================================
 function setupUI() {
-  // Panel collapse
   const panel = document.getElementById('control-panel');
   document.getElementById('panel-toggle').addEventListener('click', () => {
     panel.classList.toggle('collapsed');
@@ -706,7 +681,6 @@ function onWindowResize() {
   }
 }
 
-// Mouse / Wheel / Key controls
 function setupUserControls(canvas) {
   canvas.addEventListener('mousedown', (e) => {
     isDragging = true;
@@ -773,7 +747,6 @@ function animate() {
 
   const delta = clock.getDelta();
 
-  // FPS calculation
   fpsCounter++;
   const now = performance.now();
   if (now - lastFpsUpdate >= 500) {
@@ -795,5 +768,4 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-// Initialize on start
 window.addEventListener('DOMContentLoaded', init);
