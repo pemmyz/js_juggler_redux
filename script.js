@@ -1,11 +1,11 @@
 /**
- * AMIGA JUGGLER REDUX - SOLID GLASS ORBS & REAL-TIME CUBEMAP RAYTRACE REFLECTIONS
+ * AMIGA JUGGLER REDUX - OPAQUE MIRROR REFLECTIONS & BLUE SKY REFLECTION
  */
 
 // ==========================================
 // CONSTANTS & PALETTES
 // ==========================================
-const SKY_COLOR = 0x9885C2;
+const SKY_COLOR = 0x6E9DE5; // Authentic retro sky blue
 const CHECKER_GREEN = '#187A24';
 const CHECKER_GOLD  = '#D4AF0E';
 
@@ -13,12 +13,6 @@ const TORSO_COLOR = 0xC81414;
 const HEAD_COLOR  = 0x111215;
 const LIMB_COLOR  = 0xBAC1CE;
 const JOINT_COLOR = 0x8892A2;
-
-const BALL_HUES = [
-  { color: 0x00FF44, glow: 0x00A020 }, // Solid Emerald Glass
-  { color: 0xFFD700, glow: 0xC08800 }, // Solid Topaz Glass
-  { color: 0x00B0FF, glow: 0x0066CC }  // Solid Sapphire Glass
-];
 
 const JUGGLE_PERIOD = 2.4;
 
@@ -35,11 +29,12 @@ const config = {
   rows: 1,
   spacing: 3.2,
   waveDelay: 0.15,
-  glassOpacity: 0.85,
-  transmission: 0.75,
-  ior: 1.52,                 // Glass index of refraction
-  reflectionIntensity: 2.8,  // Real-time world reflection gain
-  roughness: 0.0,            // Mirror-smooth polished glass
+  glassOpacity: 1.0,         // Fully opaque
+  transmission: 0.0,         // No see-through transparency
+  ior: 1.52,                 // Index of refraction
+  reflectionIntensity: 1.05, // Rich reflection gain preserving vibrant sky blues
+  roughness: 0.0,            // Mirror-smooth polished finish
+  metalness: 0.90,           // Opaque specular mirror reflection
   flyCam: true,
   flySpeed: 1.0,
   pixelated: true
@@ -75,10 +70,10 @@ function init() {
   // 1. Scene & Atmosphere
   scene = new THREE.Scene();
   scene.background = new THREE.Color(SKY_COLOR);
-  scene.fog = new THREE.FogExp2(SKY_COLOR, 0.012);
+  scene.fog = new THREE.FogExp2(SKY_COLOR, 0.008);
 
   // 2. Camera
-  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 400);
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
 
   // 3. Renderer
   renderer = new THREE.WebGLRenderer({
@@ -93,7 +88,6 @@ function init() {
   clock = new THREE.Clock();
 
   // 4. Dynamic Real-Time CubeCamera & Render Target
-  // Renders 6 faces of the 3D world in real-time onto the glass balls
   dynamicCubeRenderTarget = new THREE.WebGLCubeRenderTarget(256, {
     generateMipmaps: true,
     minFilter: THREE.LinearMipmapLinearFilter,
@@ -102,8 +96,9 @@ function init() {
   cubeCamera = new THREE.CubeCamera(0.05, 500, dynamicCubeRenderTarget);
   scene.add(cubeCamera);
 
-  // 5. Lighting, Floor, Materials
+  // 5. Lighting, Blue Sky Dome, Floor, Materials
   setupLighting();
+  createSkyDome();
   createCheckerFloor();
   initSharedResources();
 
@@ -123,11 +118,11 @@ function init() {
 // LIGHTING
 // ==========================================
 function setupLighting() {
-  const ambient = new THREE.AmbientLight(0x726490, 0.95);
+  const ambient = new THREE.AmbientLight(0x5678a6, 0.85);
   scene.add(ambient);
 
-  const sun = new THREE.DirectionalLight(0xffffff, 1.4);
-  sun.position.set(25, 45, 30);
+  const sun = new THREE.DirectionalLight(0xfffaee, 1.1);
+  sun.position.set(22, 38, 26);
   sun.castShadow = true;
   sun.shadow.mapSize.width = 1024;
   sun.shadow.mapSize.height = 1024;
@@ -141,9 +136,42 @@ function setupLighting() {
   sun.shadow.bias = -0.0008;
   scene.add(sun);
 
-  const skyFill = new THREE.DirectionalLight(0xa5c2ff, 0.5);
-  skyFill.position.set(-20, 20, -20);
+  // Blue fill light to highlight upper sky reflections
+  const skyFill = new THREE.DirectionalLight(0x4a82f6, 0.6);
+  skyFill.position.set(-20, 30, -20);
   scene.add(skyFill);
+}
+
+// ==========================================
+// SKY DOME (VIBRANT BLUE AMIGA SKY)
+// ==========================================
+function createSkyDome() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 16;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+
+  // Blue Sky Gradient: Deep azure overhead down to soft pale blue at horizon
+  const grad = ctx.createLinearGradient(0, 0, 0, 256);
+  grad.addColorStop(0.0, '#2661D8'); // Deep vibrant azure overhead (reflects on top of balls)
+  grad.addColorStop(0.35, '#487FE8'); // Rich clear blue
+  grad.addColorStop(0.70, '#75A5F4'); // Bright sky blue
+  grad.addColorStop(0.90, '#9DC3FA'); // Lower sky
+  grad.addColorStop(1.0, '#BFDCFF'); // Horizon soft sky blue
+
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 16, 256);
+
+  const skyTexture = new THREE.CanvasTexture(canvas);
+  const skyGeo = new THREE.SphereGeometry(350, 32, 16);
+  const skyMat = new THREE.MeshBasicMaterial({
+    map: skyTexture,
+    side: THREE.BackSide,
+    depthWrite: false
+  });
+
+  const skyMesh = new THREE.Mesh(skyGeo, skyMat);
+  scene.add(skyMesh);
 }
 
 // ==========================================
@@ -183,7 +211,7 @@ function createCheckerFloor() {
 }
 
 // ==========================================
-// SHARED GEOMETRIES & SOLID GLASS MATERIALS
+// SHARED GEOMETRIES & OPAQUE MIRROR MATERIALS
 // ==========================================
 function initSharedResources() {
   sharedGeos.head = new THREE.SphereGeometry(0.55, 20, 16);
@@ -202,7 +230,7 @@ function initSharedResources() {
   sharedGeos.armBone = new THREE.CylinderGeometry(0.065, 0.065, 1, 12);
   sharedGeos.legBone = new THREE.CylinderGeometry(0.062, 0.062, 1, 12);
   
-  // High-fidelity sphere for smooth curved glass reflections
+  // High-fidelity sphere for smooth curved reflections
   sharedGeos.ball = new THREE.SphereGeometry(0.35, 32, 24);
 
   sharedMats.torso = new THREE.MeshPhongMaterial({
@@ -229,20 +257,20 @@ function initSharedResources() {
     shininess: 60
   });
 
-  // Solid glass physical materials reflecting the dynamic cubemap
-  glassBallMats = BALL_HUES.map(item => {
+  // Opaque mirror balls reflecting blue sky on top & checkerboard on bottom
+  glassBallMats = [0, 1, 2].map(() => {
     return new THREE.MeshPhysicalMaterial({
-      color: item.color,
-      emissive: item.glow,
-      emissiveIntensity: 0.1,
-      metalness: 0.05,
+      color: 0xffffff,
+      emissive: 0x000000,
+      emissiveIntensity: 0.0,
+      metalness: config.metalness,
       roughness: config.roughness,
       transmission: config.transmission,
       ior: config.ior,
       reflectivity: 1.0,
-      clearcoat: 1.0,
+      clearcoat: 0.45,
       clearcoatRoughness: 0.0,
-      transparent: true,
+      transparent: false,
       opacity: config.glassOpacity,
       envMap: dynamicCubeRenderTarget.texture,
       envMapIntensity: config.reflectionIntensity,
@@ -253,10 +281,14 @@ function initSharedResources() {
 
 function updateGlassMaterials() {
   glassBallMats.forEach(mat => {
+    mat.color.setHex(0xffffff);
+    mat.emissive.setHex(0x000000);
     mat.opacity = config.glassOpacity;
     mat.transmission = config.transmission;
-    mat.ior = config.ior;
+    mat.transparent = config.glassOpacity < 1.0 || config.transmission > 0.0;
+    mat.metalness = config.metalness;
     mat.roughness = config.roughness;
+    mat.ior = config.ior;
     mat.envMapIntensity = config.reflectionIntensity;
     mat.needsUpdate = true;
   });
@@ -303,7 +335,7 @@ function createJugglerEntity(posX, posZ, indexOffset) {
   const leftArm = buildArm(root, -0.75, 2.55);
   const rightArm = buildArm(root, 0.75, 2.55);
 
-  // 5. Solid Glass Reflective Balls
+  // 5. Mirror Balls
   const ballMeshes = [];
   for (let i = 0; i < 3; i++) {
     const ballMesh = new THREE.Mesh(sharedGeos.ball, glassBallMats[i]);
@@ -532,7 +564,7 @@ function updateJugglers(time) {
 function updateCubeMapReflection() {
   if (!cubeCamera || !dynamicCubeRenderTarget) return;
 
-  // Track the primary ball position to sample the surrounding reflection
+  // Track primary ball position
   if (jugglerInstances.length > 0 && jugglerInstances[0].balls.length > 0) {
     cubeCamera.position.copy(jugglerInstances[0].balls[0].position);
   } else {
@@ -546,7 +578,7 @@ function updateCubeMapReflection() {
     }
   }
 
-  // Render the real-time 6 faces of the game world into the cubemap texture
+  // Render the real-time 6 faces of the world (including the blue sky dome)
   cubeCamera.update(renderer, scene);
 
   // Restore ball visibility for primary viewpoint
@@ -602,11 +634,10 @@ function setupUI() {
   bindSlider('slider-spacing', 'val-spacing', v => { config.spacing = parseFloat(v); rebuildJugglerGrid(); });
   bindSlider('slider-wave', 'val-wave', v => { config.waveDelay = parseFloat(v); rebuildJugglerGrid(); });
 
-  // Glass & Cubemap Sliders
+  // Reflection & Optics Sliders
   bindSlider('slider-reflect', 'val-reflect', v => { config.reflectionIntensity = parseFloat(v); updateGlassMaterials(); });
-  bindSlider('slider-transmission', 'val-transmission', v => { config.transmission = parseFloat(v); updateGlassMaterials(); });
-  bindSlider('slider-ior', 'val-ior', v => { config.ior = parseFloat(v); updateGlassMaterials(); });
   bindSlider('slider-roughness', 'val-roughness', v => { config.roughness = parseFloat(v); updateGlassMaterials(); });
+  bindSlider('slider-transmission', 'val-transmission', v => { config.transmission = parseFloat(v); updateGlassMaterials(); });
   bindSlider('slider-opacity', 'val-opacity', v => { config.glassOpacity = parseFloat(v); updateGlassMaterials(); });
 
   // Cam Speed
@@ -750,10 +781,10 @@ function animate() {
     }
   }
 
-  // 1. Update dynamic cubemap reflection from the ball vantage point
+  // 1. Update dynamic cubemap reflection from the primary ball vantage point
   updateCubeMapReflection();
 
-  // 2. Render final scene with reflective solid glass balls
+  // 2. Render final scene with blue-sky reflective balls
   renderer.render(scene, camera);
 }
 
