@@ -35,7 +35,7 @@ const config = {
   reflectionIntensity: 1.05, // Rich reflection gain preserving vibrant sky blues
   roughness: 0.0,            // Mirror-smooth polished finish
   metalness: 0.90,           // Opaque specular mirror reflection
-  flyCam: true,
+  flyCam: true,              // Starts in auto flight mode
   flySpeed: 1.0,
   pixelated: true
 };
@@ -102,7 +102,7 @@ function init() {
   createCheckerFloor();
   initSharedResources();
 
-  // 6. Spawn Jugglers
+  // 6. Spawn Jugglers (Solo 1x1 start)
   rebuildJugglerGrid();
 
   // 7. Setup UI & Event Listeners
@@ -110,7 +110,12 @@ function init() {
   setupUserControls(canvas);
   window.addEventListener('resize', onWindowResize);
 
-  // 8. Start Loop
+  // 8. Auto-transition to 5x5 formation after 4 seconds
+  setTimeout(() => {
+    window.applyPreset(5, 5);
+  }, 4000);
+
+  // 9. Start Loop
   animate();
 }
 
@@ -153,11 +158,11 @@ function createSkyDome() {
 
   // Blue Sky Gradient: Deep azure overhead down to soft pale blue at horizon
   const grad = ctx.createLinearGradient(0, 0, 0, 256);
-  grad.addColorStop(0.0, '#2661D8'); // Deep vibrant azure overhead (reflects on top of balls)
-  grad.addColorStop(0.35, '#487FE8'); // Rich clear blue
-  grad.addColorStop(0.70, '#75A5F4'); // Bright sky blue
-  grad.addColorStop(0.90, '#9DC3FA'); // Lower sky
-  grad.addColorStop(1.0, '#BFDCFF'); // Horizon soft sky blue
+  grad.addColorStop(0.0, '#2661D8');
+  grad.addColorStop(0.35, '#487FE8');
+  grad.addColorStop(0.70, '#75A5F4');
+  grad.addColorStop(0.90, '#9DC3FA');
+  grad.addColorStop(1.0, '#BFDCFF');
 
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, 16, 256);
@@ -476,12 +481,14 @@ function rebuildJugglerGrid() {
   }
 
   // Update HUD
-  document.getElementById('juggler-count-display').innerText = total;
-  document.getElementById('ball-count-display').innerText = total * 3;
+  const jugglerHud = document.getElementById('juggler-count-display');
+  const ballHud = document.getElementById('ball-count-display');
+  if (jugglerHud) jugglerHud.innerText = total;
+  if (ballHud) ballHud.innerText = total * 3;
 
   camTarget.set(0, 1.85, 0);
   if (!config.flyCam) {
-    camRadius = 8.5;
+    camRadius = Math.max(8.5, Math.max(cols, rows) * spacing * 0.9);
     updateCameraOrbit();
   }
 }
@@ -564,24 +571,20 @@ function updateJugglers(time) {
 function updateCubeMapReflection() {
   if (!cubeCamera || !dynamicCubeRenderTarget) return;
 
-  // Track primary ball position
   if (jugglerInstances.length > 0 && jugglerInstances[0].balls.length > 0) {
     cubeCamera.position.copy(jugglerInstances[0].balls[0].position);
   } else {
     cubeCamera.position.set(0, 2.8, 0.5);
   }
 
-  // Temporarily hide all balls to prevent self-occlusion during cubemap rendering
   for (let j = 0; j < jugglerInstances.length; j++) {
     for (let b = 0; b < jugglerInstances[j].balls.length; b++) {
       jugglerInstances[j].balls[b].visible = false;
     }
   }
 
-  // Render the real-time 6 faces of the world (including the blue sky dome)
   cubeCamera.update(renderer, scene);
 
-  // Restore ball visibility for primary viewpoint
   for (let j = 0; j < jugglerInstances.length; j++) {
     for (let b = 0; b < jugglerInstances[j].balls.length; b++) {
       jugglerInstances[j].balls[b].visible = true;
@@ -595,7 +598,10 @@ function updateCubeMapReflection() {
 function updateFlyingCamera(delta) {
   flyTime += delta * config.flySpeed * 0.35;
 
-  const orbitR = 7.0;
+  // Dynamically adapt flight radius based on grid dimensions
+  const gridExtent = Math.max(config.cols, config.rows) * (config.spacing * 0.5);
+  const orbitR = Math.max(7.0, gridExtent + 4.5);
+
   const camX = Math.sin(flyTime) * (orbitR + 2.5);
   const camZ = Math.cos(flyTime * 0.8) * (orbitR + 3.0);
   const camY = 2.8 + Math.sin(flyTime * 1.6) * 2.2 + Math.cos(flyTime * 0.5) * 1.5;
@@ -669,10 +675,16 @@ function bindSlider(id, labelId, callback) {
 }
 
 window.applyPreset = function(cols, rows) {
-  document.getElementById('slider-cols').value = cols;
-  document.getElementById('val-cols').innerText = cols;
-  document.getElementById('slider-rows').value = rows;
-  document.getElementById('val-rows').innerText = rows;
+  const colSlider = document.getElementById('slider-cols');
+  const colVal = document.getElementById('val-cols');
+  const rowSlider = document.getElementById('slider-rows');
+  const rowVal = document.getElementById('val-rows');
+
+  if (colSlider) colSlider.value = cols;
+  if (colVal) colVal.innerText = cols;
+  if (rowSlider) rowSlider.value = rows;
+  if (rowVal) rowVal.innerText = rows;
+
   config.cols = cols;
   config.rows = rows;
   rebuildJugglerGrid();
