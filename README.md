@@ -400,8 +400,10 @@ Created as a browser-based retro 3D experiment inspired by the classic **Amiga J
 
 Built with **Three.js** and standard HTML, CSS, and JavaScript.
 
+---
+
 ## License
 
-No license is specified by the supplied project files.
+MIT License – free to use, modify, and redistribute.
 
-If this project is published publicly, add an explicit license file such as `LICENSE` and update this section accordingly.
+---
